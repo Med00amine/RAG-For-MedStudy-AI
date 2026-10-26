@@ -6,5 +6,19 @@ services:
     env_file:
       - path: .env
         required: false
+    environment:
+      OLLAMA_BASE_URL: http://ollama:11434
     volumes:
       - ./data:/app/data
+    depends_on:
+      - ollama
+
+  ollama:
+    image: ollama/ollama:0.5.7
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+
+volumes:
+  ollama-models:
