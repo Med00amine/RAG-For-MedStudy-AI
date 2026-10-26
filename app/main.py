@@ -6,7 +6,7 @@ from app.core.config import get_settings
 from app.core.logging import setup_logging
 
 settings = get_settings()
-setup_logging(settings.log_level)
+setup_logging(settings.log_level, settings.log_json)
 
 app = FastAPI(
     title=settings.app_name,
