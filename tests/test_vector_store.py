@@ -1,15 +1,4 @@
-import chromadb
-import pytest
-
 from app.ingestion.chunker import Chunk
-from app.repositories.vector_store import VectorStore
-
-
-@pytest.fixture
-def store():
-    client = chromadb.EphemeralClient()
-    yield VectorStore(client, "test")
-    client.delete_collection("test")
 
 
 def test_add_and_search(store):
