@@ -26,7 +26,8 @@ def _split(text: str, size: int, separators: list[str]) -> list[str]:
 def chunk_text(text: str, chunk_size: int = 800, overlap: int = 100) -> list[str]:
     chunks: list[str] = []
     current = ""
-    for piece in _split(text, chunk_size - overlap, SEPARATORS):
+    overlap = min(overlap, chunk_size // 2)
+    for piece in _split(text, chunk_size - overlap - 1, SEPARATORS):
         if current and len(current) + len(piece) + 1 > chunk_size:
             chunks.append(current.strip())
             current = current[-overlap:] if overlap else ""
