@@ -13,6 +13,8 @@ class Settings(BaseSettings):
     collection_name: str = "documents"
     top_k: int = 5
     min_score: float = 0.3
+    llm_model: str = "claude-opus-5-5"
+    llm_max_tokens: int = 16000
 
 
 @lru_cache
