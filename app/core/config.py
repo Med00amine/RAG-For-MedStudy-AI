@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     app_name: str = "RAG Service"
+    upload_dir: str = "data/raw"
     log_level: str = "INFO"
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     chroma_path: str = "data/chroma"
