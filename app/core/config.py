@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     app_name: str = "RAG Service"
     log_level: str = "INFO"
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
+    chroma_path: str = "data/chroma"
+    collection_name: str = "documents"
 
 
 @lru_cache

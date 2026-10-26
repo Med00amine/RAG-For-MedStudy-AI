@@ -10,6 +10,7 @@ dependencies = [
     "python-multipart>=0.0.9",
     "pypdf>=4.0",
     "sentence-transformers>=3.0",
+    "chromadb>=0.5",
 ]
 
 [project.optional-dependencies]
