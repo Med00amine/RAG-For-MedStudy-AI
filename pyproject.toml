@@ -9,6 +9,7 @@ dependencies = [
     "pydantic-settings>=2.2",
     "python-multipart>=0.0.9",
     "pypdf>=4.0",
+    "sentence-transformers>=3.0",
 ]
 
 [project.optional-dependencies]
