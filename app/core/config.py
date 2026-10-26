@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -15,7 +16,9 @@ class Settings(BaseSettings):
     collection_name: str = "documents"
     top_k: int = 5
     min_score: float = 0.3
-    llm_model: str = "claude-opus-5-5"
+    llm_provider: Literal["ollama", "claude"] = "ollama"
+    llm_model: str = "llama3.2"
+    ollama_base_url: str = "http://localhost:11434"
     llm_max_tokens: int = 16000
 
 
