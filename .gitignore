@@ -1,1 +1,9 @@
 data/raw/*
+!data/raw/.gitkeep
+data/chroma/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.env
