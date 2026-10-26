@@ -1,6 +1,7 @@
 import logging
 
 import anthropic
+import httpx
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
@@ -13,7 +14,8 @@ def register_error_handlers(app: FastAPI) -> None:
         return JSONResponse(status_code=400, content={"detail": str(exc)})
 
     @app.exception_handler(anthropic.APIError)
-    async def llm_error(_: Request, exc: anthropic.APIError) -> JSONResponse:
+    @app.exception_handler(httpx.HTTPError)
+    async def llm_error(_: Request, exc: Exception) -> JSONResponse:
         logger.error("LLM provider error: %s", exc)
         return JSONResponse(status_code=502, content={"detail": "LLM provider unavailable"})
 

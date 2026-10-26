@@ -19,17 +19,29 @@ Query  ─► embed question ─► top-k cosine search ─► score threshold �
 - **Retrieval**: top-k cosine similarity with a minimum score, optional filter by document
 - **Generation**: numbered context blocks and inline citations. If nothing relevant is
   retrieved, the service answers "I don't know" without calling the LLM
-- **LLM abstraction**: `LLM` protocol, so the provider can be swapped; the tests use a fake
+- **LLM**: free, local open-source models through [Ollama](https://ollama.com) by default
+  (`llama3.2`). Behind an `LLM` protocol, so you can switch to Claude with
+  `LLM_PROVIDER=claude`. The tests use a fake
 
 ## Quick start
 
+Everything runs locally and for free, with no API keys.
+
+With Docker (starts the API and Ollama):
+
 ```bash
-cp .env.example .env          # set ANTHROPIC_API_KEY
+make docker-up
+make pull-model               # one-time download of llama3.2 (~2 GB)
+```
+
+Without Docker: [install Ollama](https://ollama.com/download), then
+
+```bash
+ollama pull llama3.2
+cp .env.example .env
 make install
 make run                      # http://localhost:8000/docs
 ```
-
-Or with Docker: `make docker-up`
 
 ```bash
 curl -F "file=@paper.pdf" localhost:8000/documents
@@ -60,7 +72,6 @@ app/
   services/      ingestion and RAG orchestration
 tests/           unit, integration, API and retrieval-evaluation tests
 deploy/          Nginx config
-docs/            deployment guide
 ```
 
 ## Testing
@@ -75,4 +86,10 @@ labeled question set in `data/evaluation/`.
 
 ## Deployment
 
-See [docs/deployment.md](docs/deployment.md) for running on AWS EC2 behind Nginx.
+`docker-compose.prod.yml` runs the API, Ollama and Nginx (reverse proxy with rate limiting)
+with persistent volumes for the vector store and models:
+
+```bash
+docker compose -f docker-compose.prod.yml up -d --build
+docker compose -f docker-compose.prod.yml exec ollama ollama pull llama3.2
+```

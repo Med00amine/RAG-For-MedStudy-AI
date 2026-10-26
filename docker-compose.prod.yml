@@ -5,10 +5,19 @@ services:
     env_file: .env
     environment:
       LOG_JSON: "true"
+      OLLAMA_BASE_URL: http://ollama:11434
     volumes:
       - chroma-data:/app/data
     expose:
       - "8000"
+    depends_on:
+      - ollama
+
+  ollama:
+    image: ollama/ollama:0.5.7
+    restart: unless-stopped
+    volumes:
+      - ollama-models:/root/.ollama
 
   nginx:
     image: nginx:1.27-alpine
@@ -22,3 +31,4 @@ services:
 
 volumes:
   chroma-data:
+  ollama-models:

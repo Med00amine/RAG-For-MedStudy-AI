@@ -12,10 +12,11 @@ dependencies = [
     "sentence-transformers>=3.0",
     "chromadb>=0.5",
     "anthropic>=2.0",
+    "httpx>=0.27",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "httpx>=0.27", "ruff>=0.4"]
+dev = ["pytest>=8.0", "ruff>=0.4"]
 
 [tool.setuptools.packages.find]
 include = ["app*"]
