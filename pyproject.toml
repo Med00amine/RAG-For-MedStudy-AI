@@ -24,3 +24,4 @@ select = ["E", "F", "I", "B", "UP"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["slow: loads real ML models (deselect with -m 'not slow')"]
