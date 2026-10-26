@@ -1,0 +1,15 @@
+{
+  "documents": {
+    "python.txt": "Python is a high-level programming language known for readable syntax. It uses indentation to define code blocks and has a large standard library.",
+    "docker.txt": "Docker packages applications into containers. A Dockerfile describes how to build an image, and docker compose runs multi-container setups.",
+    "rag.txt": "Retrieval-augmented generation combines a search step with a language model. Relevant passages are retrieved from a vector database and added to the prompt.",
+    "coffee.txt": "Espresso is brewed by forcing hot water through finely ground coffee. A good shot takes around 25 to 30 seconds."
+  },
+  "questions": [
+    {"question": "How are code blocks defined in Python?", "expected_source": "python.txt"},
+    {"question": "What file describes how to build a container image?", "expected_source": "docker.txt"},
+    {"question": "How does RAG give the LLM extra knowledge?", "expected_source": "rag.txt"},
+    {"question": "How long should an espresso shot take?", "expected_source": "coffee.txt"},
+    {"question": "Which tool runs several containers together?", "expected_source": "docker.txt"}
+  ]
+}
