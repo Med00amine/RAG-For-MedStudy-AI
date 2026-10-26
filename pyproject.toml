@@ -11,6 +11,7 @@ dependencies = [
     "pypdf>=4.0",
     "sentence-transformers>=3.0",
     "chromadb>=0.5",
+    "anthropic>=0.40",
 ]
 
 [project.optional-dependencies]
