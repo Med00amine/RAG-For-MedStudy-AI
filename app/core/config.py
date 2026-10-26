@@ -8,6 +8,7 @@ class Settings(BaseSettings):
 
     app_name: str = "RAG Service"
     log_level: str = "INFO"
+    embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
 
 
 @lru_cache
