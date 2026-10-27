@@ -1,13 +1,24 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
+
+
+class ChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(max_length=20_000)
 
 
 class QueryRequest(BaseModel):
     question: str = Field(min_length=3, max_length=1000)
+    history: list[ChatMessage] = Field(default_factory=list, max_length=20)
     source: str | None = Field(default=None, description="Restrict search to one document")
 
 
 class Source(BaseModel):
-    source: str
+    source: str = Field(description="Path of the course file")
+    title: str
+    page: int | None = Field(default=None, description="Slide or page number")
+    location: str = Field(description="Where to read more, e.g. 'Hydatidose — diapo 12'")
     chunk_index: int
     score: float
     text: str
