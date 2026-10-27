@@ -16,3 +16,13 @@ def test_duplicate_lectures_are_indexed_once(tmp_path):
         "C2 chir/other.txt",
         "DCEM2/S1/C2 chir/hydatidose.txt",  # the copy with more folder context wins
     ]
+
+
+def test_exclude_skips_matching_folders(tmp_path):
+    for folder in ("Books", "S1"):
+        (tmp_path / folder).mkdir()
+        (tmp_path / folder / f"{folder}.txt").write_text(f"Contenu de {folder}", encoding="utf-8")
+
+    files = unique_files(tmp_path, exclude=["books"])
+
+    assert [f.name for f in files] == ["S1.txt"]
