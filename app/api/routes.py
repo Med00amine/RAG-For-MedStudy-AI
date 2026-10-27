@@ -1,19 +1,39 @@
+import json
+import logging
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi.responses import StreamingResponse
 
 from app.api.dependencies import get_ingestion_service, get_rag_service
 from app.core.config import get_settings
+from app.generation.prompts import locate
 from app.ingestion.loader import SUPPORTED_EXTENSIONS
+from app.repositories.vector_store import SearchResult
 from app.schemas.rag import IngestResponse, QueryRequest, QueryResponse, Source
 from app.services.ingestion_service import IngestionService
 from app.services.rag_service import RagService
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 IngestionDep = Annotated[IngestionService, Depends(get_ingestion_service)]
 RagDep = Annotated[RagService, Depends(get_rag_service)]
+
+
+def to_source(result: SearchResult) -> Source:
+    meta = result.metadata
+    return Source(
+        source=meta["source"],
+        title=meta.get("title", meta["source"]),
+        page=meta.get("page"),
+        location=locate(result),
+        chunk_index=meta["chunk_index"],
+        score=round(result.score, 4),
+        text=result.text,
+    )
 
 
 @router.post("/documents", response_model=IngestResponse, status_code=201)
@@ -32,16 +52,29 @@ def upload_document(file: UploadFile, service: IngestionDep) -> IngestResponse:
 
 @router.post("/query", response_model=QueryResponse)
 def query(req: QueryRequest, service: RagDep) -> QueryResponse:
-    result = service.ask(req.question, source=req.source)
-    return QueryResponse(
-        answer=result.answer,
-        sources=[
-            Source(
-                source=r.metadata["source"],
-                chunk_index=r.metadata["chunk_index"],
-                score=round(r.score, 4),
-                text=r.text,
-            )
-            for r in result.sources
-        ],
+    history = [m.model_dump() for m in req.history]
+    result = service.ask(req.question, history, source=req.source)
+    return QueryResponse(answer=result.answer, sources=[to_source(r) for r in result.sources])
+
+
+@router.post("/chat")
+def chat(req: QueryRequest, service: RagDep) -> StreamingResponse:
+    """Stream the answer as NDJSON: a `sources` event, `token` events, then `done`."""
+    history = [m.model_dump() for m in req.history]
+    results = service.retrieve(req.question, history, source=req.source)
+
+    def events() -> Iterator[str]:
+        sources = [to_source(r).model_dump() for r in results]
+        yield json.dumps({"type": "sources", "sources": sources}) + "\n"
+        try:
+            for token in service.stream_answer(req.question, results, history):
+                yield json.dumps({"type": "token", "text": token}) + "\n"
+        except Exception:  # headers are already sent: report the failure in the stream
+            logger.exception("LLM failed while streaming")
+            yield json.dumps({"type": "error", "message": "LLM provider unavailable"}) + "\n"
+        yield json.dumps({"type": "done"}) + "\n"
+
+    # Without this header Nginx buffers the stream and the answer arrives all at once.
+    return StreamingResponse(
+        events(), media_type="application/x-ndjson", headers={"X-Accel-Buffering": "no"}
     )
