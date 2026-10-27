@@ -4,7 +4,7 @@ from pathlib import Path
 from app.embeddings.embedder import Embedder
 from app.ingestion.chunker import Chunk, chunk_document
 from app.ingestion.cleaner import clean_text
-from app.ingestion.loader import load_document
+from app.ingestion.loader import Ocr, load_document
 from app.repositories.vector_store import VectorStore
 
 logger = logging.getLogger(__name__)
@@ -13,13 +13,14 @@ MIN_CHUNK_CHARS = 20  # drop slide titles like "Plan" that carry no information
 
 
 class IngestionService:
-    def __init__(self, embedder: Embedder, store: VectorStore):
+    def __init__(self, embedder: Embedder, store: VectorStore, ocr: Ocr | None = None):
         self.embedder = embedder
         self.store = store
+        self.ocr = ocr
 
     def ingest(self, path: Path, source: str | None = None) -> int:
         """Load, chunk and index one file. Re-ingesting a source replaces its old chunks."""
-        doc = load_document(path)
+        doc = load_document(path, self.ocr)
         metadata = {**doc.metadata, "source": source or path.name}
 
         chunks: list[Chunk] = []

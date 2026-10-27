@@ -2,6 +2,8 @@ import struct
 from pathlib import Path
 
 import pytest
+from PIL import Image
+from pypdf import PdfWriter
 
 from app.ingestion.cleaner import clean_text
 from app.ingestion.loader import (
@@ -29,7 +31,7 @@ def test_load_text_file(tmp_path):
 
 
 def test_unsupported_extension(tmp_path):
-    file = tmp_path / "image.png"
+    file = tmp_path / "video.mp4"
     file.write_bytes(b"")
     with pytest.raises(ValueError):
         load_document(file)
@@ -122,3 +124,43 @@ def test_clean_title():
         "Physiologie du vieillissement"
     )
     assert clean_title(Path("6- TRIAGE 2025.pptx.pdf")) == "TRIAGE 2025"
+
+
+def fake_ocr(image: Image.Image) -> str:
+    return f"texte lu par OCR ({image.width}x{image.height})"
+
+
+def test_scanned_pdf_page_goes_through_ocr(tmp_path):
+    writer = PdfWriter()
+    writer.add_blank_page(width=300, height=400)  # no text layer, like a scan
+    with open(tmp_path / "scan.pdf", "wb") as f:
+        writer.write(f)
+
+    without_ocr = load_document(tmp_path / "scan.pdf")
+    with_ocr = load_document(tmp_path / "scan.pdf", ocr=fake_ocr)
+
+    assert without_ocr.pages == []
+    assert with_ocr.pages[0].number == 1
+    assert with_ocr.pages[0].text.startswith("texte lu par OCR")
+
+
+def test_image_only_slide_goes_through_ocr(tmp_path):
+    from pptx import Presentation
+    from pptx.util import Inches
+
+    Image.new("RGB", (800, 600), "white").save(tmp_path / "scan.png")
+    deck = Presentation()
+    slide = deck.slides.add_slide(deck.slide_layouts[6])  # blank layout
+    slide.shapes.add_picture(str(tmp_path / "scan.png"), 0, 0, width=Inches(8))
+    deck.save(tmp_path / "scans.pptx")
+
+    doc = load_document(tmp_path / "scans.pptx", ocr=fake_ocr)
+
+    assert "texte lu par OCR (800x600)" in doc.pages[0].text
+
+
+def test_photo_is_read_with_ocr(tmp_path):
+    Image.new("RGB", (640, 480), "white").save(tmp_path / "notes.jpg")
+
+    assert load_document(tmp_path / "notes.jpg").pages == []
+    assert load_document(tmp_path / "notes.jpg", ocr=fake_ocr).text.endswith("(640x480)")

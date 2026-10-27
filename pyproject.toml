@@ -11,6 +11,7 @@ dependencies = [
     "pypdf>=4.0",
     "python-pptx>=1.0",
     "python-docx>=1.1",
+    "pypdfium2>=4.30",
     "sentence-transformers>=3.0",
     "chromadb>=0.5",
     "anthropic>=2.0",
@@ -21,6 +22,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "ruff>=0.4"]
 sync = ["requests>=2.31"]
+ocr = ["easyocr>=1.7"]
 
 [tool.setuptools.packages.find]
 include = ["app*"]
