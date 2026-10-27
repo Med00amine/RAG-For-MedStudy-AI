@@ -21,9 +21,11 @@ class VectorStore:
             collection_name, metadata={"hnsw:space": "cosine"}
         )
 
-    def add(self, chunks: list[Chunk], embeddings: list[list[float]]) -> None:
-        self.collection.add(
-            ids=[str(uuid.uuid4()) for _ in chunks],
+    def add(
+        self, chunks: list[Chunk], embeddings: list[list[float]], ids: list[str] | None = None
+    ) -> None:
+        self.collection.upsert(
+            ids=ids or [str(uuid.uuid4()) for _ in chunks],
             documents=[c.text for c in chunks],
             metadatas=[c.metadata for c in chunks],
             embeddings=embeddings,
@@ -39,6 +41,9 @@ class VectorStore:
                 res["documents"][0], res["metadatas"][0], res["distances"][0], strict=True
             )
         ]
+
+    def delete_source(self, source: str) -> None:
+        self.collection.delete(where={"source": source})
 
     def count(self) -> int:
         return self.collection.count()
