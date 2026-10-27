@@ -1,10 +1,11 @@
 import json
 import logging
+import secrets
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, Header, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 
 from app.api.dependencies import get_ingestion_service, get_rag_service
@@ -36,7 +37,19 @@ def to_source(result: SearchResult) -> Source:
     )
 
 
-@router.post("/documents", response_model=IngestResponse, status_code=201)
+def require_admin(x_admin_token: Annotated[str, Header()] = "") -> None:
+    """Only maintainers may add course material: it is what students will trust."""
+    expected = get_settings().admin_token
+    if not expected or not secrets.compare_digest(x_admin_token, expected):
+        raise HTTPException(403, "Adding documents requires a valid X-Admin-Token header")
+
+
+@router.post(
+    "/documents",
+    response_model=IngestResponse,
+    status_code=201,
+    dependencies=[Depends(require_admin)],
+)
 def upload_document(file: UploadFile, service: IngestionDep) -> IngestResponse:
     filename = Path(file.filename or "").name
     if Path(filename).suffix.lower() not in SUPPORTED_EXTENSIONS:
