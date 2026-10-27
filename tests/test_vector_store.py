@@ -1,4 +1,6 @@
+from app.core.config import get_settings
 from app.ingestion.chunker import Chunk
+from app.repositories.vector_store import get_vector_store
 
 
 def test_add_and_search(store):
@@ -34,3 +36,15 @@ def test_has_and_delete_source(store):
 
     store.delete_source("a.txt")
     assert store.count() == 0
+
+
+def test_each_embedding_model_gets_its_own_collection(tmp_path, monkeypatch):
+    settings = get_settings()
+    monkeypatch.setattr(settings, "chroma_path", str(tmp_path))
+    monkeypatch.setattr(settings, "collection_name", "documents")
+    monkeypatch.setattr(settings, "embedding_model", "intfloat/multilingual-e5-base")
+    get_vector_store.cache_clear()
+    try:
+        assert get_vector_store().collection.name == "documents-multilingual-e5-base"
+    finally:
+        get_vector_store.cache_clear()

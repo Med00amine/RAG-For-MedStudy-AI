@@ -56,4 +56,7 @@ class VectorStore:
 def get_vector_store() -> VectorStore:
     settings = get_settings()
     client = chromadb.PersistentClient(path=settings.chroma_path)
-    return VectorStore(client, settings.collection_name)
+    # One collection per embedding model: vectors from different models can't be mixed,
+    # and Chroma fixes a collection's dimension at the first insert.
+    model = settings.embedding_model.split("/")[-1]
+    return VectorStore(client, f"{settings.collection_name}-{model}"[:63])
