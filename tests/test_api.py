@@ -36,7 +36,7 @@ def test_upload_then_query(client):
 
 
 def test_upload_rejects_unsupported_type(client):
-    response = client.post("/documents", files={"file": ("photo.png", b"...")})
+    response = client.post("/documents", files={"file": ("lecture.mp4", b"...")})
     assert response.status_code == 415
 
 
