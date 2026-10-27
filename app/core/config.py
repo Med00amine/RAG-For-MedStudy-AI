@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     log_json: bool = False
     embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
     chroma_path: str = "data/chroma"
+    ocr_cache_dir: str = "data/processed/ocr_cache"
     collection_name: str = "documents"
     top_k: int = 5
     min_score: float = 0.3

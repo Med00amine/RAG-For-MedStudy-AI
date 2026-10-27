@@ -1,12 +1,20 @@
+import io
 import re
 import struct
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import docx
 import olefile
+from PIL import Image
 from pptx import Presentation
+from pptx.shapes.picture import Picture
 from pypdf import PdfReader
+
+Ocr = Callable[[Image.Image], str]
+MIN_TEXT_CHARS = 20  # a page or slide with less text than this is probably an image
+MIN_OCR_PIXELS = 300 * 300  # smaller pictures are logos and icons, not worth reading
 
 
 @dataclass
@@ -25,13 +33,21 @@ class Document:
         return "\n\n".join(p.text for p in self.pages)
 
 
-def _load_text(path: Path) -> list[Page]:
+def _load_text(path: Path, ocr: Ocr | None = None) -> list[Page]:
     return [Page(path.read_text(encoding="utf-8"))]
 
 
-def _load_pdf(path: Path) -> list[Page]:
+def _load_pdf(path: Path, ocr: Ocr | None = None) -> list[Page]:
     reader = PdfReader(path)
-    return [Page(page.extract_text() or "", i) for i, page in enumerate(reader.pages, start=1)]
+    pages = [Page(page.extract_text() or "", i) for i, page in enumerate(reader.pages, start=1)]
+    scanned = [p for p in pages if len(p.text.strip()) < MIN_TEXT_CHARS]
+    if ocr and scanned:
+        import pypdfium2  # renders pages to images, only needed for OCR
+
+        pdf = pypdfium2.PdfDocument(path)
+        for page in scanned:
+            page.text = ocr(pdf[page.number - 1].render(scale=2).to_pil())
+    return pages
 
 
 def _shape_texts(shape) -> list[str]:
@@ -44,17 +60,38 @@ def _shape_texts(shape) -> list[str]:
     return []
 
 
-def _load_pptx(path: Path) -> list[Page]:
+def _pictures(shapes) -> Iterator[Image.Image]:
+    for shape in shapes:
+        if hasattr(shape, "shapes"):  # group shape
+            yield from _pictures(shape.shapes)
+        elif isinstance(shape, Picture):
+            try:
+                image = Image.open(io.BytesIO(shape.image.blob))
+                image.load()
+            except Exception:  # linked or vector (EMF/WMF) pictures can't be read
+                continue
+            if image.width * image.height >= MIN_OCR_PIXELS:
+                yield image
+
+
+def _load_pptx(path: Path, ocr: Ocr | None = None) -> list[Page]:
     pages = []
     for number, slide in enumerate(Presentation(path).slides, start=1):
         parts = [t for shape in slide.shapes for t in _shape_texts(shape)]
         if slide.has_notes_slide and slide.notes_slide.notes_text_frame is not None:
             parts.append(slide.notes_slide.notes_text_frame.text)
-        pages.append(Page("\n".join(parts), number))
+        text = "\n".join(parts)
+        if ocr and len(text.strip()) < MIN_TEXT_CHARS:  # slide is a screenshot or a scan
+            text = "\n".join([text, *map(ocr, _pictures(slide.shapes))])
+        pages.append(Page(text, number))
     return pages
 
 
-def _load_docx(path: Path) -> list[Page]:
+def _load_image(path: Path, ocr: Ocr | None = None) -> list[Page]:
+    return [Page(ocr(Image.open(path)))] if ocr else []
+
+
+def _load_docx(path: Path, ocr: Ocr | None = None) -> list[Page]:
     document = docx.Document(path)
     parts = [p.text for p in document.paragraphs]
     for table in document.tables:
@@ -122,7 +159,7 @@ def parse_ppt_stream(data: bytes) -> list[Page]:
     return [Page("\n".join(dict.fromkeys(t)), number) for number, t in sorted(slides.items())]
 
 
-def _load_ppt(path: Path) -> list[Page]:
+def _load_ppt(path: Path, ocr: Ocr | None = None) -> list[Page]:
     with olefile.OleFileIO(path) as ole:
         return parse_ppt_stream(ole.openstream("PowerPoint Document").read())
 
@@ -134,6 +171,9 @@ LOADERS = {
     ".docx": _load_docx,
     ".txt": _load_text,
     ".md": _load_text,
+    ".jpg": _load_image,
+    ".jpeg": _load_image,
+    ".png": _load_image,
 }
 SUPPORTED_EXTENSIONS = set(LOADERS)
 
@@ -145,11 +185,12 @@ def clean_title(path: Path) -> str:
     return re.sub(r"[_\s]+", " ", stem).strip(" -") or path.stem
 
 
-def load_document(path: Path) -> Document:
+def load_document(path: Path, ocr: Ocr | None = None) -> Document:
+    """Load a file as pages; with `ocr`, scans, image-only slides and photos are read too."""
     loader = LOADERS.get(path.suffix.lower())
     if loader is None:
         raise ValueError(f"Unsupported file type: {path.suffix}")
-    pages = [p for p in loader(path) if p.text.strip()]
+    pages = [p for p in loader(path, ocr) if p.text.strip()]
     return Document(
         pages=pages,
         metadata={"source": path.name, "title": clean_title(path), "type": path.suffix[1:].lower()},
