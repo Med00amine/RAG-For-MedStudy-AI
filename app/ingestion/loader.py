@@ -13,7 +13,9 @@ from pptx.shapes.picture import Picture
 from pypdf import PdfReader
 
 Ocr = Callable[[Image.Image], str]
-MIN_TEXT_CHARS = 20  # a page or slide with less text than this is probably an image
+# Below this much text, a page or slide is mostly pictures (a scan, or a title over a table
+# image), so its images are sent to OCR.
+MIN_TEXT_CHARS = 100
 MIN_OCR_PIXELS = 300 * 300  # smaller pictures are logos and icons, not worth reading
 
 
@@ -46,7 +48,8 @@ def _load_pdf(path: Path, ocr: Ocr | None = None) -> list[Page]:
 
         pdf = pypdfium2.PdfDocument(path)
         for page in scanned:
-            page.text = ocr(pdf[page.number - 1].render(scale=2).to_pil())
+            # The render includes the page's own text, so OCR output replaces it when found.
+            page.text = ocr(pdf[page.number - 1].render(scale=2).to_pil()) or page.text
     return pages
 
 

@@ -1,0 +1,39 @@
+{
+  "description": "French questions a DCEM2 student might ask, each mapped to the lecture(s) that answer it. 'expected' entries are case-insensitive substrings of the source path; a hit is any retrieved chunk from one of them.",
+  "questions": [
+    {"question": "Quelle classification échographique utilise-t-on pour le kyste hydatique du foie ?", "expected": ["hydatidose"]},
+    {"question": "Comment classer la gravité d'une diverticulite compliquée selon l'atteinte péritonéale ?", "expected": ["diverticulite"]},
+    {"question": "Quels signes cliniques font suspecter un étranglement herniaire ?", "expected": ["hernies"]},
+    {"question": "Où siège le plus souvent le cancer du pancréas exocrine ?", "expected": ["pancreatiques"]},
+    {"question": "Quel est le type histologique le plus fréquent du cancer de l'endomètre ?", "expected": ["endometre"]},
+    {"question": "Quelles valeurs de l'HGPO 75 g définissent un diabète gestationnel ?", "expected": ["surveillance de grossesse", "diabéte et grossesse"]},
+    {"question": "Quelles complications rénales peut entraîner une prééclampsie sévère ?", "expected": ["hta et grossesse"]},
+    {"question": "Quel traitement médicamenteux améliore les troubles mictionnels de l'hypertrophie bénigne de la prostate ?", "expected": ["hbp"]},
+    {"question": "Quels sont les signes électrocardiographiques d'une hyperkaliémie ?", "expected": ["dyskiémie", "poly nephro"]},
+    {"question": "Quel est le mode de transmission de la polykystose rénale de l'adulte ?", "expected": ["pkhr", "rein et hta", "nic", "poly nephro"]},
+    {"question": "Comment prendre en charge une hémorragie du post-partum ?", "expected": ["protocole_hpp", "délivrance"]},
+    {"question": "Quel examen d'imagerie demander devant une suspicion de calcul urinaire ?", "expected": ["lithiase"]},
+    {"question": "Quel germe est impliqué dans la maladie ulcéreuse gastroduodénale ?", "expected": ["ugd", "gastro/0-poly"]},
+    {"question": "Quels sont les facteurs de risque du cancer du sein ?", "expected": ["cancer du sein"]},
+    {"question": "Quelles sont les contre-indications du dispositif intra-utérin ?", "expected": ["diu", "intra_uterin"]},
+    {"question": "Quelle est la démarche diagnostique devant une dysphagie ?", "expected": ["dysphagie", "cours-eph"]},
+    {"question": "Comment classe-t-on les lésions précancéreuses du col de l'utérus ?", "expected": ["dysplasies", "fcu"]},
+    {"question": "Quelles sont les causes d'une insuffisance rénale aiguë obstructive ?", "expected": ["13-ira", "poly nephro"]},
+    {"question": "Quelle est la définition du syndrome néphrotique ?", "expected": ["syndrome néphrotique", "poly nephro"]},
+    {"question": "Comment confirmer une rupture prématurée des membranes ?", "expected": ["map et rpm"]},
+    {"question": "Quelle est la conduite à tenir devant une mort fœtale in utero ?", "expected": ["mfiu"]},
+    {"question": "Quelles sont les phases de la délivrance normale ?", "expected": ["délivrance"]},
+    {"question": "Comment prendre en charge des vomissements gravidiques graves ?", "expected": ["vomissements"]},
+    {"question": "Quels sont les signes échographiques d'un fibrome utérin ?", "expected": ["fibromes"]},
+    {"question": "Quels sont les temps de la mécanique de l'accouchement ?", "expected": ["mecanique generale"]},
+    {"question": "Comment interpréter le trou anionique devant une acidose métabolique ?", "expected": ["acidose"]}
+  ],
+  "off_topic": [
+    "Quelle est la capitale de l'Australie ?",
+    "Comment réussir une pâte à pizza ?",
+    "Qui a gagné la coupe du monde de football en 2018 ?",
+    "Explique-moi le théorème de Pythagore.",
+    "Quel est le meilleur langage pour apprendre la programmation ?",
+    "Recommande-moi une série à regarder ce week-end."
+  ]
+}

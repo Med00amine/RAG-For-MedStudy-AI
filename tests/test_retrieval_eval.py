@@ -16,7 +16,7 @@ def test_retrieval_hit_rate(store):
     embedder = get_embedder()
     for name, text in data["documents"].items():
         chunks = chunk_document(text, {"source": name})
-        store.add(chunks, embedder.embed([c.text for c in chunks]))
+        store.add(chunks, embedder.embed_documents([c.text for c in chunks]))
 
     retriever = Retriever(embedder, store, top_k=1, min_score=0.0)
     hits = sum(
