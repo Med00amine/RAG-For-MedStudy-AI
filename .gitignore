@@ -1,6 +1,6 @@
 data/raw/*
 !data/raw/.gitkeep
-data/chroma/
+data/chroma*/
 .venv/
 __pycache__/
 *.pyc
