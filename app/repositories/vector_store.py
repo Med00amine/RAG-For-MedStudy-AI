@@ -1,3 +1,4 @@
+import threading
 import uuid
 from dataclasses import dataclass
 from functools import lru_cache
@@ -6,6 +7,10 @@ import chromadb
 
 from app.core.config import get_settings
 from app.ingestion.chunker import Chunk
+
+# Chroma's client registry is not thread-safe, and requests run on a thread pool: the
+# web app's first two requests (status and library) must not open the database at once.
+_open_lock = threading.Lock()
 
 
 @dataclass
@@ -55,8 +60,9 @@ class VectorStore:
 @lru_cache
 def get_vector_store() -> VectorStore:
     settings = get_settings()
-    client = chromadb.PersistentClient(path=settings.chroma_path)
     # One collection per embedding model: vectors from different models can't be mixed,
     # and Chroma fixes a collection's dimension at the first insert.
     model = settings.embedding_model.split("/")[-1]
-    return VectorStore(client, f"{settings.collection_name}-{model}"[:63])
+    with _open_lock:
+        client = chromadb.PersistentClient(path=settings.chroma_path)
+        return VectorStore(client, f"{settings.collection_name}-{model}"[:63])
