@@ -7,6 +7,9 @@ run:
 test:
 	pytest -q
 
+test-ui:
+	node --test "tests/js/*.test.mjs"
+
 lint:
 	ruff check .
 	ruff format --check .
