@@ -27,6 +27,9 @@ ocr = ["easyocr>=1.7"]
 [tool.setuptools.packages.find]
 include = ["app*"]
 
+[tool.setuptools.package-data]
+app = ["static/*"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"
