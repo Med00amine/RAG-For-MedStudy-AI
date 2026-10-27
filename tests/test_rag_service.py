@@ -18,7 +18,8 @@ def make_service(fake_embedder, store, llm):
 
 def test_answer_uses_retrieved_context(fake_embedder, store):
     store.add(
-        [Chunk("My cat sleeps all day.", {"source": "pets.txt"})], fake_embedder.embed(["cat"])
+        [Chunk("My cat sleeps all day.", {"source": "pets.txt"})],
+        fake_embedder.embed_documents(["cat"]),
     )
     llm = FakeLLM()
 
@@ -30,7 +31,9 @@ def test_answer_uses_retrieved_context(fake_embedder, store):
 
 
 def test_no_relevant_context_skips_llm(fake_embedder, store):
-    store.add([Chunk("Python tips", {"source": "code.txt"})], fake_embedder.embed(["python"]))
+    store.add(
+        [Chunk("Python tips", {"source": "code.txt"})], fake_embedder.embed_documents(["python"])
+    )
     llm = FakeLLM()
 
     result = make_service(fake_embedder, store, llm).ask("Tell me about cars")

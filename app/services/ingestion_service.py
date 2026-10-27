@@ -36,6 +36,6 @@ class IngestionService:
             # Prefix the lecture title so a bare slide like "Traitement: ..." is still findable.
             texts = [f"{metadata['title']}\n{c.text}" for c in chunks]
             ids = [f"{metadata['source']}#{c.metadata['chunk_index']}" for c in chunks]
-            self.store.add(chunks, self.embedder.embed(texts), ids=ids)
+            self.store.add(chunks, self.embedder.embed_documents(texts), ids=ids)
         logger.info("Ingested %s: %d chunks", metadata["source"], len(chunks))
         return len(chunks)

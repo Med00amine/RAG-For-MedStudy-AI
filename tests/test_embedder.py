@@ -8,7 +8,7 @@ from app.embeddings.embedder import get_embedder
 def test_similar_texts_are_closer():
     embedder = get_embedder()
     cat, kitten, car = np.array(
-        embedder.embed(
+        embedder.embed_documents(
             ["A cat sleeps on the sofa", "A kitten naps on the couch", "Engine oil change"]
         )
     )
