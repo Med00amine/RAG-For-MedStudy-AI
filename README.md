@@ -1,4 +1,4 @@
-# Assistant de révision médicale
+# MedStudy AI — assistant de révision médicale
 
 ![CI](https://github.com/Med00amine/Rag-project/actions/workflows/ci.yml/badge.svg)
 
@@ -16,16 +16,26 @@ Docker · Nginx · GitHub Actions
 ## What a student gets
 
 Ask *« Quelle est la classification de Gharbi du kyste hydatique ? »* and the answer comes
-back streamed, in four parts:
+back streamed, in three sections:
 
 1. **Réponse** – the essentials, key criteria and numbers in bold, each fact cited `[n]`
 2. **Exemple clinique** – a short realistic case
 3. **Astuce** – a mnemonic or a classic exam trap
-4. **Où réviser** – the lectures used, e.g. *Hydatidose hépatique — diapo 19*; clicking a
-   citation opens the exact course passage
+
+Under it, **Où réviser** lists the lectures behind the answer with the exact slide or page
+(*Hydatidose hépatique · diapo 19*), grouped by lecture, built from the retrieval metadata
+rather than written by the model, so a page number can never be invented. Clicking a
+citation opens the passage in a side panel, with a button that opens the PDF at that page.
 
 Follow-up questions (*« et le traitement ? »*) keep the context, and questions the courses
 don't cover get an honest *« je n'ai rien trouvé dans les cours »* instead of a made-up answer.
+
+The web app (dark or light theme, desktop to phone) also has:
+
+- **Conversations and saved answers**, searchable, kept in the student's browser
+- **A library** of every indexed document, filtered by course, with *ask this document only*
+  and *open the original*; maintainers add or remove documents there with the admin token
+- **Courses in the sidebar**, derived from the drive folders (*C1 · Gynéco obstét*, *Stage*…)
 
 ## How it works
 
@@ -54,8 +64,12 @@ question (+ previous one) ─► embed ─► top-k cosine ─► score threshol
   respected, not scraped.
 - **Model chosen by evaluation.** A French question set mapped to the lectures that answer
   them compares embedding models (below) and calibrates the "not in the course" threshold.
-- **Safe to share.** Uploading documents through the API requires an admin token; the chat
-  page escapes all model and course text.
+- **Safe to share.** Adding or removing documents requires an admin token; the UI escapes
+  all model and course text (its Markdown renderer is unit-tested against injection); only
+  indexed course files inside the library folders can be opened, and textbooks are quoted,
+  never handed out whole.
+- **No frontend build.** The UI is plain ES modules served by FastAPI, with inline Lucide
+  icons and no runtime dependency.
 
 ## Retrieval evaluation
 
@@ -95,13 +109,16 @@ machine (`data/` is git-ignored) and belong to their authors.
 
 ## API
 
-| Method | Path            | Description                                                |
-|--------|-----------------|------------------------------------------------------------|
-| GET    | `/`             | Chat page                                                  |
-| POST   | `/chat`         | Streamed answer (NDJSON: `sources`, `token`…, `done`)      |
-| POST   | `/query`        | Same answer as one JSON response                           |
-| POST   | `/documents`    | Add a document (requires `X-Admin-Token`)                  |
-| GET    | `/health/ready` | Readiness, with the number of indexed chunks               |
+| Method | Path              | Description                                              |
+|--------|-------------------|----------------------------------------------------------|
+| GET    | `/`               | Web app                                                  |
+| POST   | `/chat`           | Streamed answer (NDJSON: `sources`, `token`…, `done`)    |
+| POST   | `/query`          | Same answer as one JSON response                         |
+| GET    | `/documents`      | Indexed documents, with passage counts                   |
+| GET    | `/documents/file` | Original course file (PDFs open inline, at `#page=N`)    |
+| POST   | `/documents`      | Add a document (requires `X-Admin-Token`)                |
+| DELETE | `/documents`      | Remove a document from the index (requires the token)    |
+| GET    | `/health/ready`   | Readiness, with the number of indexed chunks             |
 
 ## Project layout
 
@@ -114,9 +131,10 @@ app/
   retrieval/     retriever
   generation/    prompt, LLM clients (Ollama, Claude)
   services/      ingestion and RAG orchestration
-  static/        chat page
+  static/        web app: ES modules (chat, library, Markdown renderer), CSS, no build step
 scripts/         sync_drive, ingest, evaluate_retrieval
 tests/           unit, API and retrieval tests (fake embedder and LLM, no downloads)
+  js/            frontend unit tests (node --test)
 deploy/          Nginx config
 ```
 
@@ -125,4 +143,5 @@ deploy/          Nginx config
 ```bash
 make test                     # everything
 pytest -m "not slow"          # skip tests that load the real embedding model
+make test-ui                  # frontend unit tests (Node 22, no dependencies)
 ```

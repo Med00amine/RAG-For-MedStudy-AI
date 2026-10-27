@@ -9,6 +9,8 @@ class Settings(BaseSettings):
 
     app_name: str = "Assistant de révision médicale"
     upload_dir: str = "data/raw"
+    # Folders indexed with scripts/ingest.py: their sources are paths relative to them.
+    source_dirs: list[str] = ["data/raw/drive"]
     admin_token: str = ""  # uploads through the API are disabled until this is set
     log_level: str = "INFO"
     log_json: bool = False

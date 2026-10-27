@@ -1,3 +1,6 @@
+import threading
+from concurrent.futures import ThreadPoolExecutor
+
 from app.core.config import get_settings
 from app.ingestion.chunker import Chunk
 from app.repositories.vector_store import get_vector_store
@@ -48,3 +51,40 @@ def test_each_embedding_model_gets_its_own_collection(tmp_path, monkeypatch):
         assert get_vector_store().collection.name == "documents-multilingual-e5-base"
     finally:
         get_vector_store.cache_clear()
+
+
+def test_store_can_be_opened_by_concurrent_requests(tmp_path, monkeypatch):
+    # The web app asks for its status and its library at the same time on load.
+    def open_store(barrier):
+        barrier.wait()
+        return get_vector_store().count()
+
+    errors = []
+    try:
+        for attempt in range(10):
+            monkeypatch.setattr(get_settings(), "chroma_path", str(tmp_path / str(attempt)))
+            get_vector_store.cache_clear()
+            barrier = threading.Barrier(8)
+            with ThreadPoolExecutor(8) as pool:
+                futures = [pool.submit(open_store, barrier) for _ in range(8)]
+            errors += [f.exception() for f in futures if f.exception()]
+    finally:
+        get_vector_store.cache_clear()
+
+    assert errors == []
+
+
+def test_sources_lists_each_file_once(store):
+    meta = {"source": "a.pdf", "title": "A", "type": "pdf"}
+    store.add(
+        [Chunk("x", meta), Chunk("y", meta), Chunk("z", {"source": "b.txt"})],
+        [[1.0, 0.0], [0.9, 0.1], [0.0, 1.0]],
+    )
+
+    assert store.sources() == {
+        "a.pdf": {"title": "A", "type": "pdf", "chunks": 2},
+        "b.txt": {"title": "b.txt", "type": "", "chunks": 1},
+    }
+
+    store.delete_source("a.pdf")
+    assert list(store.sources()) == ["b.txt"]

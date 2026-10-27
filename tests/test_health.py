@@ -14,8 +14,14 @@ def test_request_id_header():
     assert response.headers["X-Request-ID"] == "abc123"
 
 
-def test_chat_page_is_served():
-    response = TestClient(app).get("/")
-    assert response.status_code == 200
-    assert "text/html" in response.headers["content-type"]
-    assert "/chat" in response.text
+def test_chat_page_and_its_scripts_are_served():
+    client = TestClient(app)
+
+    page = client.get("/")
+    script = client.get("/static/api.js")
+
+    assert "text/html" in page.headers["content-type"]
+    assert 'src="/static/main.js"' in page.text
+    assert "javascript" in script.headers["content-type"]
+    assert script.headers["cache-control"] == "no-cache"
+    assert "/chat" in script.text

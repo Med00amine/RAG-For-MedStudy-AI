@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 from app.api.dependencies import get_ingestion_service, get_rag_service
 from app.core.config import get_settings
 from app.main import app
+from app.repositories.vector_store import get_vector_store
 from app.retrieval.retriever import Retriever
 from app.services.ingestion_service import IngestionService
 from app.services.rag_service import RagService
@@ -21,6 +22,7 @@ def client(fake_embedder, store, tmp_path, monkeypatch):
     retriever = Retriever(fake_embedder, store, top_k=3, min_score=0.5)
     app.dependency_overrides[get_ingestion_service] = lambda: IngestionService(fake_embedder, store)
     app.dependency_overrides[get_rag_service] = lambda: RagService(retriever, FakeLLM())
+    app.dependency_overrides[get_vector_store] = lambda: store
     yield TestClient(app, headers={"X-Admin-Token": "s3cret"})
     app.dependency_overrides.clear()
 
@@ -113,3 +115,66 @@ def test_chat_reports_llm_failure_in_stream(client, fake_embedder, store):
 
     events = [json.loads(line) for line in response.text.splitlines()]
     assert [e["type"] for e in events] == ["sources", "error", "done"]
+
+
+def test_documents_lists_the_library(client):
+    client.post("/documents", files={"file": ("pets.txt", b"My cat sleeps all day.")})
+
+    body = client.get("/documents").json()
+
+    assert body["uploads_enabled"] is True
+    assert ".pdf" in body["upload_types"]
+    assert body["documents"] == [
+        {
+            "source": "pets.txt",
+            "title": "pets",
+            "type": "txt",
+            "chunks": 1,
+            "textbook": False,
+            "openable": True,
+        }
+    ]
+
+
+def test_original_file_is_served(client):
+    client.post("/documents", files={"file": ("pets.txt", b"My cat sleeps all day.")})
+
+    response = client.get("/documents/file", params={"source": "pets.txt"})
+
+    assert response.status_code == 200
+    assert response.text == "My cat sleeps all day."
+    assert response.headers["content-disposition"].startswith("inline")
+
+
+def test_textbooks_and_files_outside_the_library_are_not_served(
+    client, fake_embedder, store, tmp_path, monkeypatch
+):
+    monkeypatch.setattr(get_settings(), "source_dirs", [str(tmp_path / "drive")])
+    service = IngestionService(fake_embedder, store)
+    for name, source in [
+        ("drive/DCEM2/Books/cardio.txt", "DCEM2/Books/cardio.txt"),
+        ("private/secret.txt", "../private/secret.txt"),
+    ]:
+        path = tmp_path / name
+        path.parent.mkdir(parents=True)
+        path.write_text("My cat sleeps all day long.")
+        service.ingest(path, source=source)
+
+    listing = {d["source"]: d for d in client.get("/documents").json()["documents"]}
+
+    assert listing["DCEM2/Books/cardio.txt"]["textbook"] is True
+    for source in ["DCEM2/Books/cardio.txt", "../private/secret.txt", "missing.txt"]:
+        assert client.get("/documents/file", params={"source": source}).status_code == 404
+        assert not listing.get(source, {}).get("openable")
+
+
+def test_delete_document(client):
+    client.post("/documents", files={"file": ("pets.txt", b"My cat sleeps all day.")})
+    params = {"source": "pets.txt"}
+
+    forbidden = client.delete("/documents", params=params, headers={"X-Admin-Token": ""})
+
+    assert forbidden.status_code == 403
+    assert client.delete("/documents", params=params).status_code == 204
+    assert client.get("/documents").json()["documents"] == []
+    assert client.delete("/documents", params=params).status_code == 404

@@ -32,3 +32,18 @@ class QueryResponse(BaseModel):
 class IngestResponse(BaseModel):
     filename: str
     chunks: int
+
+
+class DocumentInfo(BaseModel):
+    source: str = Field(description="Path of the course file, as answers cite it")
+    title: str
+    type: str
+    chunks: int
+    textbook: bool = Field(description="Ranked after the course slides")
+    openable: bool = Field(description="The original file can be opened from the app")
+
+
+class DocumentList(BaseModel):
+    documents: list[DocumentInfo]
+    uploads_enabled: bool = Field(description="An admin token is configured on the server")
+    upload_types: list[str]

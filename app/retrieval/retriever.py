@@ -4,6 +4,10 @@ from app.embeddings.embedder import Embedder
 from app.repositories.vector_store import SearchResult, VectorStore
 
 
+def is_textbook(source: str, textbook_paths: Sequence[str]) -> bool:
+    return any(p in source for p in textbook_paths)
+
+
 class Retriever:
     """Top-k cosine retrieval, dropping results below a minimum similarity.
 
@@ -30,8 +34,8 @@ class Retriever:
         self.textbook_penalty = textbook_penalty
 
     def _rank(self, result: SearchResult) -> float:
-        is_textbook = any(p in result.metadata["source"] for p in self.textbook_paths)
-        return result.score - (self.textbook_penalty if is_textbook else 0.0)
+        textbook = is_textbook(result.metadata["source"], self.textbook_paths)
+        return result.score - (self.textbook_penalty if textbook else 0.0)
 
     def retrieve(self, query: str, source: str | None = None) -> list[SearchResult]:
         embedding = self.embedder.embed_query(query)

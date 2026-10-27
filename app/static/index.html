@@ -1,211 +1,253 @@
 <!doctype html>
-<html lang="fr">
+<html lang="fr" data-theme="dark">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Révision Médecine</title>
-<style>
-  :root {
-    --bg: #f6f7f9; --panel: #ffffff; --text: #1d2330; --muted: #5b6475;
-    --border: #e1e5ec; --accent: #0f766e; --accent-soft: #e6f4f2; --user: #0f766e;
-    --user-text: #ffffff; --warn: #9a3412;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #0f1419; --panel: #171d24; --text: #e6e9ee; --muted: #9aa4b2;
-      --border: #2a323d; --accent: #2dd4bf; --accent-soft: #12302d; --user: #115e59;
-      --user-text: #ecfeff; --warn: #fdba74;
-    }
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; background: var(--bg); color: var(--text);
-    font: 16px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-    display: flex; flex-direction: column; height: 100dvh;
-  }
-  header { padding: 14px 16px; border-bottom: 1px solid var(--border); background: var(--panel); }
-  header h1 { margin: 0; font-size: 1.1rem; }
-  header p { margin: 2px 0 0; color: var(--muted); font-size: .85rem; }
-  main { flex: 1; overflow-y: auto; padding: 16px; }
-  .thread { max-width: 820px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
-  .msg { padding: 12px 14px; border-radius: 12px; max-width: 100%; overflow-wrap: anywhere; }
-  .user { align-self: flex-end; background: var(--user); color: var(--user-text); max-width: 85%; }
-  .bot { background: var(--panel); border: 1px solid var(--border); }
-  .bot h4 { margin: 10px 0 4px; font-size: 1rem; }
-  .bot ul, .bot ol { margin: 4px 0; padding-left: 22px; }
-  .bot p { margin: 6px 0; }
-  .cite { color: var(--accent); font-weight: 600; text-decoration: none; font-size: .85em; }
-  .error { color: var(--warn); }
-  .sources { margin-top: 10px; border-top: 1px dashed var(--border); padding-top: 8px; }
-  .sources > span { font-size: .8rem; color: var(--muted); text-transform: uppercase; }
-  details { margin: 6px 0; padding: 6px 10px; border-radius: 8px; background: var(--accent-soft); }
-  details:target { outline: 2px solid var(--accent); }
-  summary { cursor: pointer; font-size: .9rem; }
-  summary small { color: var(--muted); display: block; }
-  details pre {
-    white-space: pre-wrap; font-family: inherit; font-size: .85rem; line-height: 1.45;
-    margin: 6px 0 0; color: var(--muted);
-  }
-  .empty { text-align: center; color: var(--muted); margin-top: 8vh; }
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 12px; }
-  .chips button {
-    border: 1px solid var(--border); background: var(--panel); color: var(--text);
-    border-radius: 999px; padding: 8px 14px; font: inherit; font-size: .9rem; cursor: pointer;
-  }
-  form { display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); background: var(--panel); }
-  form > div { flex: 1; max-width: 820px; margin: 0 auto; display: flex; gap: 8px; }
-  textarea {
-    flex: 1; resize: none; border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;
-    font: inherit; background: var(--bg); color: var(--text); max-height: 160px;
-  }
-  form button {
-    border: 0; border-radius: 10px; padding: 0 18px; background: var(--accent); color: #fff;
-    font: inherit; font-weight: 600; cursor: pointer;
-  }
-  form button:disabled { opacity: .5; cursor: default; }
-  .typing::after { content: "▍"; animation: blink 1s steps(2) infinite; }
-  @keyframes blink { 50% { opacity: 0; } }
-</style>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="description" content="Révisez vos cours de médecine : des réponses tirées de vos diapos et polycopiés, avec la page exacte à revoir.">
+<meta name="theme-color" content="#101418">
+<title>MedStudy AI</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2314B8A6'/%3E%3Cpath d='M27 16h-5l-4 11-6-22-4 11H5' fill='none' stroke='%23042F2E' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/static/app.css">
+<script>
+  // Apply the saved theme before the first paint.
+  try {
+    const theme = JSON.parse(localStorage.getItem("medstudy.theme")) || "dark";
+    const light = theme === "light" || (theme === "system" && matchMedia("(prefers-color-scheme: light)").matches);
+    document.documentElement.dataset.theme = light ? "light" : "dark";
+  } catch {}
+</script>
+<script type="module" src="/static/main.js"></script>
 </head>
 <body>
-<header>
-  <h1>Assistant de révision — Médecine</h1>
-  <p>Réponses tirées de vos cours, avec les diapos à revoir. Outil de révision, pas un avis médical.</p>
-</header>
-<main id="scroll">
-  <div class="thread" id="thread">
-    <div class="empty" id="empty">
-      <p>Pose une question sur tes cours : définition, classification, conduite à tenir…</p>
-      <div class="chips">
-        <button type="button">Classification de Gharbi du kyste hydatique du foie</button>
-        <button type="button">Signes ECG de l'hyperkaliémie</button>
-        <button type="button">Conduite à tenir devant une hémorragie du post-partum</button>
-        <button type="button">Contre-indications du DIU</button>
+<!-- Icons: Lucide (ISC licence), https://lucide.dev -->
+<svg class="sprite" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-activity" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></symbol>
+  <symbol id="i-pen" viewBox="0 0 24 24"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.375 2.625a1 1 0 0 1 3 3l-9.013 9.014a2 2 0 0 1-.853.505l-2.873.84a.5.5 0 0 1-.62-.62l.84-2.873a2 2 0 0 1 .506-.852z"/></symbol>
+  <symbol id="i-panel" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 12h16"/><path d="M4 6h16"/><path d="M4 18h16"/></symbol>
+  <symbol id="i-library" viewBox="0 0 24 24"><path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+  <symbol id="i-monitor" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="3" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/></symbol>
+  <symbol id="i-arrow-up" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></symbol>
+  <symbol id="i-arrow-down" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect width="12" height="12" x="6" y="6" rx="2"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+  <symbol id="i-chevron-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></symbol>
+  <symbol id="i-slides" viewBox="0 0 24 24"><path d="M2 3h20"/><path d="M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3"/><path d="m7 21 5-5 5 5"/></symbol>
+  <symbol id="i-image" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></symbol>
+  <symbol id="i-external" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></symbol>
+  <symbol id="i-message" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol>
+</svg>
+
+<div class="app" id="app">
+  <aside class="sidebar" id="sidebar" aria-label="Navigation">
+    <div class="sidebar-top">
+      <div class="brand">
+        <span class="brand-mark"><svg class="icon" aria-hidden="true"><use href="#i-activity"/></svg></span>
+        <span class="brand-name hide-rail">MedStudy <span>AI</span></span>
       </div>
+      <button type="button" class="icon-btn hide-rail" data-action="collapse-sidebar" title="Réduire le menu" aria-label="Réduire le menu">
+        <svg class="icon" aria-hidden="true"><use href="#i-panel"/></svg>
+      </button>
+    </div>
+
+    <button type="button" class="btn new-chat" data-action="new-chat" title="Nouvelle conversation">
+      <svg class="icon" aria-hidden="true"><use href="#i-pen"/></svg><span class="hide-rail">Nouvelle conversation</span>
+    </button>
+    <nav class="sidebar-nav" aria-label="Sections">
+      <button type="button" class="nav-item" id="nav-library" data-action="open-library" title="Bibliothèque">
+        <svg class="icon" aria-hidden="true"><use href="#i-library"/></svg><span class="label hide-rail">Bibliothèque</span><span class="count hide-rail" id="doc-count"></span>
+      </button>
+      <button type="button" class="nav-item show-rail" data-action="search-history" title="Rechercher dans l'historique" aria-label="Rechercher dans l'historique">
+        <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
+      </button>
+    </nav>
+
+    <details class="group hide-rail" id="courses-group" open>
+      <summary class="group-label">Cours<svg class="icon" aria-hidden="true"><use href="#i-chevron-down"/></svg></summary>
+      <ul class="course-list" id="course-list"></ul>
+    </details>
+
+    <section class="history hide-rail" aria-label="Historique">
+      <div class="tabs" role="tablist" aria-label="Historique">
+        <button type="button" role="tab" data-action="tab" data-tab="history" aria-selected="true" aria-controls="history-list">Conversations</button>
+        <button type="button" role="tab" data-action="tab" data-tab="saved" aria-selected="false" aria-controls="history-list">Enregistrées</button>
+      </div>
+      <label class="search-field">
+        <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
+        <input type="search" id="history-search" placeholder="Rechercher…" aria-label="Rechercher dans l'historique" autocomplete="off">
+      </label>
+      <div class="history-list" id="history-list" role="tabpanel"></div>
+    </section>
+
+    <div class="sidebar-foot">
+      <button type="button" class="nav-item" data-action="open-settings" title="Paramètres">
+        <svg class="icon" aria-hidden="true"><use href="#i-settings"/></svg><span class="label hide-rail">Paramètres</span>
+      </button>
+      <button type="button" class="icon-btn" id="theme-btn" data-action="toggle-theme"></button>
+      <button type="button" class="icon-btn show-rail" data-action="expand-sidebar" title="Déplier le menu" aria-label="Déplier le menu">
+        <svg class="icon" aria-hidden="true"><use href="#i-panel"/></svg>
+      </button>
+    </div>
+  </aside>
+
+  <div class="scrim" id="scrim" data-action="close-overlays" hidden></div>
+
+  <main class="workspace">
+    <header class="topbar">
+      <button type="button" class="icon-btn menu-btn" data-action="open-drawer" aria-label="Ouvrir le menu">
+        <svg class="icon" aria-hidden="true"><use href="#i-menu"/></svg>
+      </button>
+      <div class="topbar-title">
+        <h1 id="view-title">Nouvelle conversation</h1>
+        <p id="view-subtitle" hidden></p>
+      </div>
+      <button type="button" class="icon-btn topbar-new" data-action="new-chat" title="Nouvelle conversation" aria-label="Nouvelle conversation">
+        <svg class="icon" aria-hidden="true"><use href="#i-pen"/></svg>
+      </button>
+    </header>
+
+    <div class="banner" id="banner" role="alert" hidden>
+      <svg class="icon" aria-hidden="true"><use href="#i-alert"/></svg>
+      <span>Serveur injoignable : les réponses sont indisponibles pour le moment.</span>
+      <button type="button" class="btn btn-secondary btn-sm" data-action="retry-status">Réessayer</button>
+    </div>
+
+    <section class="view" id="chat-view" aria-label="Conversation">
+      <div class="scroller" id="scroller">
+        <div class="thread" id="thread"></div>
+      </div>
+      <div class="composer-dock">
+        <button type="button" class="jump" id="jump" data-action="jump" hidden>
+          <svg class="icon" aria-hidden="true"><use href="#i-arrow-down"/></svg>Dernière réponse
+        </button>
+        <form class="composer" id="composer">
+          <textarea id="question" rows="1" maxlength="1000" placeholder="Posez votre question sur vos cours…" aria-label="Votre question" enterkeyhint="send"></textarea>
+          <div class="composer-bar">
+            <div class="scope">
+              <button type="button" class="scope-btn" id="scope-btn" data-action="pick-scope" aria-haspopup="listbox" aria-expanded="false" aria-controls="scope-menu">
+                <svg class="icon" aria-hidden="true"><use href="#i-book"/></svg><span id="scope-label">Tous les cours</span><svg class="icon" aria-hidden="true"><use href="#i-chevron-down"/></svg>
+              </button>
+              <button type="button" class="icon-btn xs" id="scope-clear" data-action="clear-scope" title="Chercher dans tous les cours" aria-label="Chercher dans tous les cours" hidden>
+                <svg class="icon" aria-hidden="true"><use href="#i-x"/></svg>
+              </button>
+            </div>
+            <span class="char-count" id="char-count" hidden></span>
+            <span class="composer-hint"><kbd>Entrée</kbd> envoyer · <kbd>Maj</kbd>+<kbd>Entrée</kbd> nouvelle ligne</span>
+            <button type="submit" class="send-btn" id="send" aria-label="Envoyer la question" disabled></button>
+          </div>
+          <div class="scope-menu" id="scope-menu" hidden>
+            <input type="search" id="scope-search" role="combobox" aria-expanded="true" aria-controls="scope-options" aria-autocomplete="list" placeholder="Chercher un document…" aria-label="Chercher un document" autocomplete="off">
+            <ul role="listbox" id="scope-options" aria-label="Documents"></ul>
+          </div>
+        </form>
+        <p class="disclaimer">Outil de révision tiré de vos cours, pas un avis médical. Vérifiez toujours la source.</p>
+      </div>
+    </section>
+
+    <section class="view" id="library-view" aria-labelledby="library-title" hidden>
+      <div class="scroller">
+        <div class="page">
+          <header class="page-head">
+            <div>
+              <h2 id="library-title">Bibliothèque</h2>
+              <p class="page-sub" id="library-summary">Chargement…</p>
+            </div>
+            <div id="library-actions"></div>
+          </header>
+          <div id="library-admin"></div>
+          <label class="search-field library-search">
+            <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
+            <input type="search" id="library-search" placeholder="Rechercher un cours, un dossier, un manuel…" aria-label="Rechercher dans la bibliothèque" autocomplete="off">
+          </label>
+          <div class="chips" id="library-courses" role="group" aria-label="Filtrer par cours"></div>
+          <div id="library-list"></div>
+        </div>
+      </div>
+      <input type="file" id="file-input" multiple hidden>
+      <div class="drop-overlay" id="drop-overlay" hidden>
+        <svg class="icon" aria-hidden="true"><use href="#i-upload"/></svg>Déposez vos fichiers pour les indexer
+      </div>
+    </section>
+
+    <section class="view" id="saved-view" aria-label="Réponse enregistrée" hidden></section>
+  </main>
+
+  <aside class="source-panel" id="source-panel" aria-labelledby="source-title" hidden>
+    <header class="panel-head">
+      <div>
+        <h2 id="source-title">Sources</h2>
+        <p id="source-subtitle"></p>
+      </div>
+      <button type="button" class="icon-btn" data-action="close-sources" title="Fermer" aria-label="Fermer les sources">
+        <svg class="icon" aria-hidden="true"><use href="#i-x"/></svg>
+      </button>
+    </header>
+    <div class="panel-body" id="source-list"></div>
+  </aside>
+</div>
+
+<dialog class="dialog" id="settings-dialog" aria-labelledby="settings-title">
+  <div class="dialog-head">
+    <h2 id="settings-title">Paramètres</h2>
+    <button type="button" class="icon-btn" data-action="close-dialog" aria-label="Fermer">
+      <svg class="icon" aria-hidden="true"><use href="#i-x"/></svg>
+    </button>
+  </div>
+  <div class="dialog-body">
+    <fieldset class="setting">
+      <legend>Thème</legend>
+      <div class="segmented">
+        <label><input type="radio" name="theme" value="dark"><span><svg class="icon" aria-hidden="true"><use href="#i-moon"/></svg>Sombre</span></label>
+        <label><input type="radio" name="theme" value="light"><span><svg class="icon" aria-hidden="true"><use href="#i-sun"/></svg>Clair</span></label>
+        <label><input type="radio" name="theme" value="system"><span><svg class="icon" aria-hidden="true"><use href="#i-monitor"/></svg>Système</span></label>
+      </div>
+    </fieldset>
+    <div class="setting">
+      <label for="admin-token">Jeton administrateur</label>
+      <input class="input" type="password" id="admin-token" autocomplete="off" spellcheck="false" placeholder="Valeur de ADMIN_TOKEN">
+      <p class="setting-help" id="admin-help"></p>
+    </div>
+    <div class="setting">
+      <span class="setting-label">Historique</span>
+      <p class="setting-help" id="local-data"></p>
+      <button type="button" class="btn btn-danger-ghost btn-sm" data-action="clear-history">
+        <svg class="icon" aria-hidden="true"><use href="#i-trash"/></svg>Effacer l'historique
+      </button>
+    </div>
+    <div class="setting">
+      <span class="setting-label">Index</span>
+      <p class="setting-help" id="about-index"></p>
     </div>
   </div>
-</main>
-<form id="form">
-  <div>
-    <textarea id="input" rows="1" placeholder="Ta question…" aria-label="Question"></textarea>
-    <button id="send" disabled>Envoyer</button>
-  </div>
-</form>
-<script>
-const thread = document.getElementById("thread");
-const input = document.getElementById("input");
-const send = document.getElementById("send");
-const history = [];  // [{role, content}] sent back so follow-up questions work
-let turn = 0;
+</dialog>
 
-const escape = (s) => s.replace(/[&<>"']/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+<dialog class="dialog dialog-sm" id="confirm-dialog" aria-labelledby="confirm-title" aria-describedby="confirm-message">
+  <form method="dialog">
+    <h2 id="confirm-title"></h2>
+    <p id="confirm-message"></p>
+    <div class="dialog-actions">
+      <button class="btn btn-ghost" value="cancel" autofocus>Annuler</button>
+      <button class="btn btn-danger" value="confirm" id="confirm-ok"></button>
+    </div>
+  </form>
+</dialog>
 
-// Small, safe Markdown subset: escape first, then headings, lists, bold and [n] citations.
-function render(md, id) {
-  const html = [];
-  let list = null;
-  for (const raw of escape(md).split("\n")) {
-    const line = raw
-      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-      .replace(/\[(\d+)\]/g, `<a class="cite" href="#src-${id}-$1">[$1]</a>`);
-    const item = line.match(/^\s*(?:[-*•]|(\d+)[.)])\s+(.*)$/);
-    if (item) {
-      const tag = item[1] ? "ol" : "ul";
-      if (list !== tag) {
-        if (list) html.push(`</${list}>`);
-        // keep "1. Réponse … 2. Exemple" numbered even with bullet lists in between
-        html.push(tag === "ol" ? `<ol start="${item[1]}">` : "<ul>");
-        list = tag;
-      }
-      html.push(`<li>${item[2]}</li>`);
-      continue;
-    }
-    if (list) { html.push(`</${list}>`); list = null; }
-    const heading = line.match(/^#{1,4}\s+(.*)$/);
-    if (heading) html.push(`<h4>${heading[1]}</h4>`);
-    else if (line.trim()) html.push(`<p>${line}</p>`);
-  }
-  if (list) html.push(`</${list}>`);
-  return html.join("");
-}
-
-function renderSources(sources, id) {
-  if (!sources.length) return "";
-  const cards = sources.map((s, i) => {
-    const module = s.source.split("/").slice(-3, -1).join(" › ");
-    return `<details id="src-${id}-${i + 1}"><summary>[${i + 1}] ${escape(s.location)}` +
-      `<small>${escape(module)}</small></summary><pre>${escape(s.text)}</pre></details>`;
-  });
-  return `<div class="sources"><span>Où réviser</span>${cards.join("")}</div>`;
-}
-
-function add(cls, html) {
-  document.getElementById("empty")?.remove();
-  const div = document.createElement("div");
-  div.className = `msg ${cls}`;
-  div.innerHTML = html;
-  thread.appendChild(div);
-  div.scrollIntoView({block: "end"});
-  return div;
-}
-
-async function ask(question) {
-  const id = ++turn;
-  add("user", escape(question));
-  const bot = add("bot typing", "");
-  input.value = ""; send.disabled = true; input.disabled = true;
-
-  let answer = "", sources = [], failed = false;
-  const show = () => { bot.innerHTML = render(answer, id) + renderSources(sources, id); };
-  try {
-    const res = await fetch("/chat", {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      body: JSON.stringify({question, history: history.slice(-6)}),
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    for (;;) {
-      const {value, done} = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, {stream: true});
-      const lines = buffer.split("\n");
-      buffer = lines.pop();
-      for (const line of lines.filter(Boolean)) {
-        const event = JSON.parse(line);
-        if (event.type === "sources") sources = event.sources;
-        if (event.type === "token") answer += event.text;
-        if (event.type === "error") failed = true;
-        show();
-      }
-    }
-  } catch (err) {
-    failed = true;
-  }
-  bot.classList.remove("typing");
-  if (failed) {
-    bot.innerHTML += `<p class="error">Le modèle ne répond pas. Vérifie qu'Ollama est lancé, puis réessaie.</p>`;
-  } else {
-    history.push({role: "user", content: question}, {role: "assistant", content: answer});
-  }
-  input.disabled = false; input.focus();
-}
-
-input.addEventListener("input", () => {
-  send.disabled = input.value.trim().length < 3;
-  input.style.height = "auto";
-  input.style.height = `${Math.min(input.scrollHeight, 160)}px`;
-});
-input.addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); if (!send.disabled) ask(input.value.trim()); }
-});
-document.getElementById("form").addEventListener("submit", (e) => {
-  e.preventDefault();
-  if (!send.disabled) ask(input.value.trim());
-});
-document.querySelectorAll(".chips button").forEach((b) => b.addEventListener("click", () => ask(b.textContent)));
-</script>
+<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+<div class="sr-only" id="live" aria-live="polite"></div>
 </body>
 </html>
