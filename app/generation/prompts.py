@@ -35,4 +35,7 @@ def locate(result: SearchResult) -> str:
 
 def build_prompt(question: str, results: list[SearchResult]) -> str:
     context = "\n\n".join(f"[{i}] {locate(r)}\n{r.text}" for i, r in enumerate(results, start=1))
-    return f"<cours>\n{context}\n</cours>\n\nQuestion : {question}"
+    # Restated last because models follow the most recent instruction best (Qwen can
+    # otherwise drift into Chinese in long answers).
+    reminder = "Réponds en français, avec la structure demandée et les citations [n]."
+    return f"<cours>\n{context}\n</cours>\n\nQuestion : {question}\n\n{reminder}"
