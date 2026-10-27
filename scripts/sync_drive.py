@@ -90,12 +90,16 @@ def fetch(session, url: str, dest: Path, retries: int = 3) -> None:
     tmp = dest.with_name(f".{dest.name}.part")  # never leave a truncated file under the real name
     for attempt in range(retries + 1):
         with session.get(url, stream=True, timeout=120) as resp:
-            if resp.ok and "text/html" not in resp.headers.get("Content-Type", ""):
+            is_html = "text/html" in resp.headers.get("Content-Type", "")
+            if resp.ok and not is_html:
                 with tmp.open("wb") as f:
                     for block in resp.iter_content(1 << 20):
                         f.write(block)
                 tmp.replace(dest)
                 return
+            if is_html and "permission to download" in resp.text:
+                # The owner made the file view-only: retrying won't help, and we respect it.
+                raise PermissionError("the owner has disabled downloads for this file")
         if attempt < retries:
             time.sleep(15 * 2**attempt)
     raise RuntimeError(f"Drive refused the download (HTTP {resp.status_code})")
