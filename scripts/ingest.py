@@ -1,6 +1,6 @@
 """Index every supported file under a folder into the vector store.
 
-    python -m scripts.ingest data/raw/drive [--force] [--no-ocr]
+    python -m scripts.ingest data/raw/drive [--force] [--no-ocr] [--exclude Books]
 
 Each file is stored under its path relative to the folder, which is what answers cite.
 Identical copies are indexed once, and files already in the store are skipped, so an
@@ -12,6 +12,7 @@ import hashlib
 import importlib.util
 import sys
 import time
+from collections.abc import Sequence
 from pathlib import Path
 
 from app.core.logging import setup_logging
@@ -21,11 +22,13 @@ from app.repositories.vector_store import get_vector_store
 from app.services.ingestion_service import IngestionService
 
 
-def unique_files(folder: Path) -> list[Path]:
+def unique_files(folder: Path, exclude: Sequence[str] = ()) -> list[Path]:
     """Each distinct file once: the same lecture is often shared in several Drive folders."""
     by_content: dict[str, Path] = {}
     for path in sorted(folder.rglob("*")):
         if path.suffix.lower() not in SUPPORTED_EXTENSIONS:
+            continue
+        if any(pattern.lower() in path.as_posix().lower() for pattern in exclude):
             continue
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
         # Keep the copy with the most folder context: it makes clearer citations.
@@ -39,6 +42,9 @@ def main() -> None:
     parser.add_argument("folder", type=Path)
     parser.add_argument("--force", action="store_true", help="re-index files already stored")
     parser.add_argument("--no-ocr", action="store_true", help="skip scanned pages and images")
+    parser.add_argument(
+        "--exclude", action="append", default=[], help="skip paths containing this (repeatable)"
+    )
     args = parser.parse_args()
     sys.stdout.reconfigure(errors="replace")
     setup_logging("WARNING")
@@ -52,7 +58,7 @@ def main() -> None:
 
     store = get_vector_store()
     service = IngestionService(get_embedder(), store, ocr=ocr)
-    files = unique_files(args.folder)
+    files = unique_files(args.folder, args.exclude)
     new_chunks, failed = 0, []
     for i, path in enumerate(files, start=1):
         source = path.relative_to(args.folder).as_posix()
