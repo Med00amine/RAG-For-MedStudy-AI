@@ -18,4 +18,4 @@ docker-up:
 	docker compose up --build
 
 pull-model:
-	docker compose exec ollama ollama pull llama3.2
+	docker compose exec ollama ollama pull qwen2.5:7b
