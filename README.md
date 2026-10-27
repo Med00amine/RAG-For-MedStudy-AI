@@ -127,15 +127,21 @@ python -m scripts.ingest data/raw/drive                           # indexes only
 ## How it works
 
 ```mermaid
-flowchart LR
-    A["Class Google Drives"] -->|sync_drive| B["Course files<br/>PDF, PPTX, PPT, DOCX, images"]
-    B -->|"loaders + OCR"| C["Pages and slides"]
-    C -->|"chunk + embed"| D[("ChromaDB<br/>35,443 passages")]
-    Q["Student question"] -->|embed| R["Retriever<br/>threshold, courses first"]
-    D --> R
-    R -->|"numbered excerpts"| L["Qwen2.5 7B<br/>Ollama, local"]
-    L -->|"streamed answer"| W["Web app"]
-    R -->|"exact slide or page"| W
+flowchart TB
+    subgraph indexing["Indexing: once per new drive or year"]
+        direction LR
+        A["Class Google Drives"] -->|sync_drive| B["Course files<br/>PDF, PPTX, PPT, DOCX, images"]
+        B -->|"loaders + OCR"| C["Pages and slides"]
+        C -->|"chunk + embed"| D[("ChromaDB<br/>35,443 passages")]
+    end
+    subgraph answering["Answering: every question"]
+        direction LR
+        Q["Student question"] -->|"embed + search"| R["Retriever<br/>threshold, courses first"]
+        R -->|"numbered excerpts"| L["Qwen2.5 7B<br/>Ollama, local"]
+        L -->|"streamed answer"| W["Web app"]
+        R -.->|"exact slide or page"| W
+    end
+    indexing --> answering
 ```
 
 A question is embedded with multilingual-e5, and the closest passages above a similarity
