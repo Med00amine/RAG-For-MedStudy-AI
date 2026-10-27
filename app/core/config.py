@@ -9,6 +9,7 @@ class Settings(BaseSettings):
 
     app_name: str = "Assistant de révision médicale"
     upload_dir: str = "data/raw"
+    admin_token: str = ""  # uploads through the API are disabled until this is set
     log_level: str = "INFO"
     log_json: bool = False
     embedding_model: str = "intfloat/multilingual-e5-base"

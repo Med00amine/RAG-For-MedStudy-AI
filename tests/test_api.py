@@ -17,11 +17,28 @@ from tests.test_rag_service import FakeLLM
 @pytest.fixture
 def client(fake_embedder, store, tmp_path, monkeypatch):
     monkeypatch.setattr(get_settings(), "upload_dir", str(tmp_path))
+    monkeypatch.setattr(get_settings(), "admin_token", "s3cret")
     retriever = Retriever(fake_embedder, store, top_k=3, min_score=0.5)
     app.dependency_overrides[get_ingestion_service] = lambda: IngestionService(fake_embedder, store)
     app.dependency_overrides[get_rag_service] = lambda: RagService(retriever, FakeLLM())
-    yield TestClient(app)
+    yield TestClient(app, headers={"X-Admin-Token": "s3cret"})
     app.dependency_overrides.clear()
+
+
+@pytest.mark.parametrize("token", ["", "wrong"])
+def test_upload_requires_admin_token(client, token):
+    response = client.post(
+        "/documents",
+        files={"file": ("fake.txt", b"Fake course content")},
+        headers={"X-Admin-Token": token},
+    )
+    assert response.status_code == 403
+
+
+def test_upload_disabled_without_configured_token(client, monkeypatch):
+    monkeypatch.setattr(get_settings(), "admin_token", "")
+    response = client.post("/documents", files={"file": ("fake.txt", b"Fake course content")})
+    assert response.status_code == 403
 
 
 def test_upload_then_query(client):
