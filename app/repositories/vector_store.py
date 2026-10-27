@@ -42,6 +42,9 @@ class VectorStore:
             )
         ]
 
+    def has_source(self, source: str) -> bool:
+        return bool(self.collection.get(where={"source": source}, limit=1)["ids"])
+
     def delete_source(self, source: str) -> None:
         self.collection.delete(where={"source": source})
 

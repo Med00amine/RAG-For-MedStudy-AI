@@ -24,3 +24,13 @@ def test_metadata_filter(store):
     results = store.search([1.0, 0.0], top_k=2, where={"source": "b.txt"})
 
     assert [r.text for r in results] == ["y"]
+
+
+def test_has_and_delete_source(store):
+    store.add([Chunk("about cats", {"source": "a.txt"})], [[1.0, 0.0]], ids=["a.txt#0"])
+
+    assert store.has_source("a.txt")
+    assert not store.has_source("b.txt")
+
+    store.delete_source("a.txt")
+    assert store.count() == 0
