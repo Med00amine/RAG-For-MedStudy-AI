@@ -27,5 +27,13 @@
     {"question": "Quels sont les signes échographiques d'un fibrome utérin ?", "expected": ["fibromes"]},
     {"question": "Quels sont les temps de la mécanique de l'accouchement ?", "expected": ["mecanique generale"]},
     {"question": "Comment interpréter le trou anionique devant une acidose métabolique ?", "expected": ["acidose"]}
+  ],
+  "off_topic": [
+    "Quelle est la capitale de l'Australie ?",
+    "Comment réussir une pâte à pizza ?",
+    "Qui a gagné la coupe du monde de football en 2018 ?",
+    "Explique-moi le théorème de Pythagore.",
+    "Quel est le meilleur langage pour apprendre la programmation ?",
+    "Recommande-moi une série à regarder ce week-end."
   ]
 }
