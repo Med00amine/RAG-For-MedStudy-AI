@@ -17,6 +17,8 @@ from pathlib import Path
 
 import olefile
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 ENTRY = re.compile(
     r'<div class="flip-entry" id="entry-([\w-]+)".*?href="([^"]+)"'
@@ -49,7 +51,11 @@ def list_folder(
 
 def walk(session, folder_id: str, path: Path):
     """Yield (file_id, href, relative_path) for every file below a folder."""
-    _, entries = list_folder(session, folder_id)
+    try:
+        _, entries = list_folder(session, folder_id)
+    except requests.RequestException as exc:  # a private or flaky subfolder: skip it
+        print(f"SKIP folder {path}: {exc}", flush=True)
+        return
     for entry_id, href, title in entries:
         if "/drive/folders/" in href:
             time.sleep(0.3)  # be gentle with Drive
@@ -126,6 +132,9 @@ def main() -> None:
     sys.stdout.reconfigure(errors="replace")  # Windows consoles can't print every accent
 
     session = requests.Session()
+    # Drive drops connections now and then during long syncs: retry them with backoff.
+    retry = Retry(total=5, backoff_factor=2, status_forcelist=[429, 500, 502, 503, 504])
+    session.mount("https://", HTTPAdapter(max_retries=retry))
     downloaded, skipped, failed = 0, 0, []
     for url in args.folders:
         folder_id = url.rstrip("/").split("/")[-1].split("?")[0]
