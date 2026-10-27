@@ -42,6 +42,10 @@ def test_clean_text():
     assert clean_text(raw) == "Retrieval augmented\n\ngeneration"
 
 
+def test_clean_text_drops_slide_number_fields():
+    assert clean_text("‹#›\nClassification OMS") == "Classification OMS"
+
+
 def test_load_pptx_keeps_slide_numbers(tmp_path):
     from pptx import Presentation
 
@@ -157,6 +161,24 @@ def test_image_only_slide_goes_through_ocr(tmp_path):
     doc = load_document(tmp_path / "scans.pptx", ocr=fake_ocr)
 
     assert "texte lu par OCR (800x600)" in doc.pages[0].text
+
+
+def test_title_over_table_image_goes_through_ocr(tmp_path):
+    # Common in lectures: a title, and the actual content pasted as a picture.
+    from pptx import Presentation
+    from pptx.util import Inches
+
+    Image.new("RGB", (700, 340), "white").save(tmp_path / "table.png")
+    deck = Presentation()
+    slide = deck.slides.add_slide(deck.slide_layouts[5])  # title only
+    slide.shapes.title.text = "Classification OMS"
+    slide.shapes.add_picture(str(tmp_path / "table.png"), 0, Inches(2), width=Inches(7))
+    deck.save(tmp_path / "cours.pptx")
+
+    text = load_document(tmp_path / "cours.pptx", ocr=fake_ocr).pages[0].text
+
+    assert text.startswith("Classification OMS")
+    assert "texte lu par OCR (700x340)" in text
 
 
 def test_photo_is_read_with_ocr(tmp_path):

@@ -36,3 +36,10 @@ def test_reingest_replaces_chunks(tmp_path, fake_embedder, store):
     ingestion.ingest(file)
 
     assert store.count() == 1
+
+
+def test_closing_slides_are_not_indexed(tmp_path, fake_embedder, store):
+    file = tmp_path / "fin.txt"
+    file.write_text("Merci pour votre attention !", encoding="utf-8")
+
+    assert IngestionService(fake_embedder, store).ingest(file) == 0
