@@ -16,9 +16,8 @@ RUN mkdir app && touch app/__init__.py && pip install . && rm -rf app
 
 COPY app ./app
 
-# Bake the embedding model into the image so containers start without downloading it.
-RUN python -c "from sentence_transformers import SentenceTransformer; \
-SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2')"
+# Bake the configured embedding model into the image so containers start without downloading it.
+RUN python -c "from app.embeddings.embedder import get_embedder; get_embedder()"
 
 RUN useradd --create-home appuser && mkdir -p data && chown -R appuser /app
 USER appuser

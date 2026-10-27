@@ -13,5 +13,5 @@ def test_similar_texts_are_closer():
         )
     )
 
-    assert cat.shape == (384,)
+    assert cat.shape == (embedder.model.get_sentence_embedding_dimension(),)
     assert cat @ kitten > cat @ car
