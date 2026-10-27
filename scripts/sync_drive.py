@@ -26,6 +26,7 @@ ENTRY = re.compile(
     re.S,
 )
 TITLE = re.compile(r"<title>([^<]*)</title>")
+TARGET_ID = re.compile(r"/(?:folders|d)/([\w-]+)")
 DOWNLOAD_URL = "https://drive.usercontent.google.com/download?id={id}&export=download&confirm=t"
 KNOWN_EXTENSIONS = {".pdf", ".pptx", ".ppt", ".docx", ".doc", ".jpg", ".jpeg", ".png", ".mp4"}
 EXPORTS = {
@@ -49,19 +50,26 @@ def list_folder(
     return html.unescape(title.group(1)) if title else folder_id, entries
 
 
-def walk(session, folder_id: str, path: Path):
+def walk(session, folder_id: str, path: Path, seen: set[str] | None = None):
     """Yield (file_id, href, relative_path) for every file below a folder."""
+    seen = set() if seen is None else seen
+    if folder_id in seen:  # shortcuts can point back up the tree
+        return
+    seen.add(folder_id)
     try:
         _, entries = list_folder(session, folder_id)
     except requests.RequestException as exc:  # a private or flaky subfolder: skip it
         print(f"SKIP folder {path}: {exc}", flush=True)
         return
     for entry_id, href, title in entries:
+        # A shortcut has its own entry id; its link points at the real file or folder.
+        target = TARGET_ID.search(href)
+        item_id = target.group(1) if target else entry_id
         if "/drive/folders/" in href:
             time.sleep(0.3)  # be gentle with Drive
-            yield from walk(session, entry_id, path / safe(title))
+            yield from walk(session, item_id, path / safe(title), seen)
         else:
-            yield entry_id, href, path / safe(title)
+            yield item_id, href, path / safe(title)
 
 
 def sniff_extension(path: Path) -> str:
