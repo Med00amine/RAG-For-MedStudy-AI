@@ -72,3 +72,19 @@ def test_store_can_be_opened_by_concurrent_requests(tmp_path, monkeypatch):
         get_vector_store.cache_clear()
 
     assert errors == []
+
+
+def test_sources_lists_each_file_once(store):
+    meta = {"source": "a.pdf", "title": "A", "type": "pdf"}
+    store.add(
+        [Chunk("x", meta), Chunk("y", meta), Chunk("z", {"source": "b.txt"})],
+        [[1.0, 0.0], [0.9, 0.1], [0.0, 1.0]],
+    )
+
+    assert store.sources() == {
+        "a.pdf": {"title": "A", "type": "pdf", "chunks": 2},
+        "b.txt": {"title": "b.txt", "type": "", "chunks": 1},
+    }
+
+    store.delete_source("a.pdf")
+    assert list(store.sources()) == ["b.txt"]

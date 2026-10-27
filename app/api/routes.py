@@ -6,14 +6,22 @@ from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, UploadFile
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 
 from app.api.dependencies import get_ingestion_service, get_rag_service
 from app.core.config import get_settings
 from app.generation.prompts import locate
 from app.ingestion.loader import SUPPORTED_EXTENSIONS
-from app.repositories.vector_store import SearchResult
-from app.schemas.rag import IngestResponse, QueryRequest, QueryResponse, Source
+from app.repositories.vector_store import SearchResult, VectorStore, get_vector_store
+from app.retrieval.retriever import is_textbook
+from app.schemas.rag import (
+    DocumentInfo,
+    DocumentList,
+    IngestResponse,
+    QueryRequest,
+    QueryResponse,
+    Source,
+)
 from app.services.ingestion_service import IngestionService
 from app.services.rag_service import RagService
 
@@ -22,6 +30,10 @@ router = APIRouter()
 
 IngestionDep = Annotated[IngestionService, Depends(get_ingestion_service)]
 RagDep = Annotated[RagService, Depends(get_rag_service)]
+StoreDep = Annotated[VectorStore, Depends(get_vector_store)]
+
+# Opened in the browser (a PDF at the cited page); slides and Word files are downloaded.
+INLINE_TYPES = {".pdf", ".png", ".jpg", ".jpeg", ".txt"}
 
 
 def to_source(result: SearchResult) -> Source:
@@ -38,10 +50,66 @@ def to_source(result: SearchResult) -> Source:
 
 
 def require_admin(x_admin_token: Annotated[str, Header()] = "") -> None:
-    """Only maintainers may add course material: it is what students will trust."""
+    """Only maintainers may change the course material: it is what students will trust."""
     expected = get_settings().admin_token
     if not expected or not secrets.compare_digest(x_admin_token, expected):
-        raise HTTPException(403, "Adding documents requires a valid X-Admin-Token header")
+        raise HTTPException(403, "Changing documents requires a valid X-Admin-Token header")
+
+
+def source_file(source: str) -> Path | None:
+    """The original file of an indexed source, only if it lies inside a library folder."""
+    settings = get_settings()
+    for folder in (settings.upload_dir, *settings.source_dirs):
+        root = Path(folder).resolve()
+        path = (root / source).resolve()
+        if path.is_relative_to(root) and path.is_file():
+            return path
+    return None
+
+
+def can_open(source: str) -> bool:
+    # Textbooks are quoted in answers, never handed out whole.
+    textbook = is_textbook(source, get_settings().textbook_paths)
+    return not textbook and source_file(source) is not None
+
+
+@router.get("/documents", response_model=DocumentList)
+def list_documents(store: StoreDep) -> DocumentList:
+    settings = get_settings()
+    documents = [
+        DocumentInfo(
+            source=source,
+            **info,
+            textbook=is_textbook(source, settings.textbook_paths),
+            openable=can_open(source),
+        )
+        for source, info in sorted(store.sources().items())
+    ]
+    return DocumentList(
+        documents=documents,
+        uploads_enabled=bool(settings.admin_token),
+        upload_types=sorted(SUPPORTED_EXTENSIONS),
+    )
+
+
+@router.get("/documents/file")
+def document_file(source: str, store: StoreDep) -> FileResponse:
+    """The original course file, so students can check the cited slide or page."""
+    if source not in store.sources() or not can_open(source):
+        raise HTTPException(404, "No openable document with this source")
+    path = source_file(source)
+    inline = path.suffix.lower() in INLINE_TYPES
+    return FileResponse(
+        path, filename=path.name, content_disposition_type="inline" if inline else "attachment"
+    )
+
+
+@router.delete("/documents", status_code=204, dependencies=[Depends(require_admin)])
+def delete_document(source: str, store: StoreDep) -> None:
+    """Remove a document from the index. The file itself stays on disk."""
+    if source not in store.sources():
+        raise HTTPException(404, "No indexed document with this source")
+    store.delete_source(source)
 
 
 @router.post(
