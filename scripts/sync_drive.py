@@ -10,11 +10,11 @@ already on disk are skipped, so the script can be re-run to pick up new material
 import argparse
 import html
 import re
+import sys
 import time
 import zipfile
 from pathlib import Path
 
-import gdown
 import olefile
 import requests
 
@@ -24,6 +24,7 @@ ENTRY = re.compile(
     re.S,
 )
 TITLE = re.compile(r"<title>([^<]*)</title>")
+DOWNLOAD_URL = "https://drive.usercontent.google.com/download?id={id}&export=download&confirm=t"
 KNOWN_EXTENSIONS = {".pdf", ".pptx", ".ppt", ".docx", ".doc", ".jpg", ".jpeg", ".png", ".mp4"}
 EXPORTS = {
     "/presentation/": ("https://docs.google.com/presentation/d/{id}/export/pptx", ".pptx"),
@@ -84,17 +85,29 @@ def already_downloaded(dest: Path) -> bool:
     )
 
 
+def fetch(session, url: str, dest: Path, retries: int = 3) -> None:
+    """Stream a URL to disk, backing off when Drive rate-limits or returns an HTML error page."""
+    tmp = dest.with_name(f".{dest.name}.part")  # never leave a truncated file under the real name
+    for attempt in range(retries + 1):
+        with session.get(url, stream=True, timeout=120) as resp:
+            if resp.ok and "text/html" not in resp.headers.get("Content-Type", ""):
+                with tmp.open("wb") as f:
+                    for block in resp.iter_content(1 << 20):
+                        f.write(block)
+                tmp.replace(dest)
+                return
+        if attempt < retries:
+            time.sleep(15 * 2**attempt)
+    raise RuntimeError(f"Drive refused the download (HTTP {resp.status_code})")
+
+
 def download(session, file_id: str, href: str, dest: Path) -> Path:
     dest.parent.mkdir(parents=True, exist_ok=True)
-    for marker, (url, ext) in EXPORTS.items():
+    url = DOWNLOAD_URL
+    for marker, (export_url, ext) in EXPORTS.items():
         if marker in href:
-            dest = dest.with_name(dest.name + ext)
-            resp = session.get(url.format(id=file_id), timeout=120)
-            resp.raise_for_status()
-            dest.write_bytes(resp.content)
-            return dest
-    if not gdown.download(id=file_id, output=str(dest), quiet=True):
-        raise RuntimeError("gdown could not download the file")
+            url, dest = export_url, dest.with_name(dest.name + ext)
+    fetch(session, url.format(id=file_id), dest)
     if dest.suffix.lower() not in KNOWN_EXTENSIONS and (ext := sniff_extension(dest)):
         dest = dest.rename(dest.with_name(dest.name + ext))
     return dest
@@ -106,6 +119,7 @@ def main() -> None:
     parser.add_argument("--out", default="data/raw/drive", type=Path)
     parser.add_argument("--exclude", action="append", default=[], help="skip paths containing this")
     args = parser.parse_args()
+    sys.stdout.reconfigure(errors="replace")  # Windows consoles can't print every accent
 
     session = requests.Session()
     downloaded, skipped, failed = 0, 0, []
@@ -122,10 +136,11 @@ def main() -> None:
             try:
                 saved = download(session, file_id, href, dest)
                 downloaded += 1
-                print(f"ok   {saved.relative_to(args.out)}")
+                print(f"ok   {saved.relative_to(args.out)}", flush=True)
+                time.sleep(1)  # stay under Drive's anonymous download rate limit
             except Exception as exc:  # keep going: one bad file shouldn't stop the sync
                 failed.append(str(rel))
-                print(f"FAIL {rel}: {exc}")
+                print(f"FAIL {rel}: {exc}", flush=True)
 
     print(f"\n{downloaded} downloaded, {skipped} already present, {len(failed)} failed")
 

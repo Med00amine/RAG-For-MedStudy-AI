@@ -18,7 +18,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "ruff>=0.4"]
-sync = ["gdown>=5.0", "requests>=2.31"]
+sync = ["requests>=2.31"]
 
 [tool.setuptools.packages.find]
 include = ["app*"]
