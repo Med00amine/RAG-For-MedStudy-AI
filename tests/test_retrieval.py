@@ -1,3 +1,4 @@
+from app.ingestion.chunker import Chunk
 from app.retrieval.retriever import Retriever
 from app.services.ingestion_service import IngestionService
 
@@ -43,3 +44,27 @@ def test_closing_slides_are_not_indexed(tmp_path, fake_embedder, store):
     file.write_text("Merci pour votre attention !", encoding="utf-8")
 
     assert IngestionService(fake_embedder, store).ingest(file) == 0
+
+
+def test_course_slides_rank_before_textbooks(fake_embedder, store):
+    store.add(
+        [
+            Chunk("cat cat cat", {"source": "DCEM2/Books/Big textbook.pdf"}),
+            Chunk("cat and a car", {"source": "DCEM2/S1/lecture.pptx"}),
+        ],
+        fake_embedder.embed_documents(["cat cat cat", "cat and a car"]),
+    )
+
+    def sources(penalty):
+        retriever = Retriever(
+            fake_embedder,
+            store,
+            top_k=2,
+            min_score=0,
+            textbook_paths=["/Books/"],
+            textbook_penalty=penalty,
+        )
+        return [r.metadata["source"] for r in retriever.retrieve("cat")]
+
+    assert sources(0.0)[0] == "DCEM2/Books/Big textbook.pdf"  # textbook is the closer match
+    assert sources(0.5)[0] == "DCEM2/S1/lecture.pptx"  # but the course slide comes first

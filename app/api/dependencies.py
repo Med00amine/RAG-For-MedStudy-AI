@@ -23,5 +23,12 @@ def get_ingestion_service() -> IngestionService:
 @lru_cache
 def get_rag_service() -> RagService:
     s = get_settings()
-    retriever = Retriever(get_embedder(), get_vector_store(), s.top_k, s.min_score)
+    retriever = Retriever(
+        get_embedder(),
+        get_vector_store(),
+        s.top_k,
+        s.min_score,
+        textbook_paths=s.textbook_paths,
+        textbook_penalty=s.textbook_penalty,
+    )
     return RagService(retriever, get_llm())
